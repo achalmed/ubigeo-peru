@@ -9,4 +9,3 @@ for(fn in list.files(pattern = "*.rds")) {
     file = glue::glue("{out}.json")
   )
 }
-¸

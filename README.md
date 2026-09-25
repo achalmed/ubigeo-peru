@@ -23,9 +23,10 @@ Los arhivos están en tres formatos distintos: CSV, JSON, y RDS (formato de dato
 | `departamento`                      | Nombre del Departamento                               |
 | `iso_3166_2`                        | Código ISO-3166-2 para la Región                      |
 | `fips`                              | Código FIPS para la Región                            |
+| `capital`                           | Capital del Departamento                              |
 | `superficie`                        | Superficie en Km<sup>2</sup>                          |
 | `pob_densidad_2020`                 | Densidad Poblacional al 2020                          |
-| `altitud`                           | Altitud en metros sobre el nivel del mar (msnm)       |
+| `altitude`                          | Altitud en metros sobre el nivel del mar (msnm)       |
 | `latitude`                          | Latitud Sur                                           |
 | `longitude`                         | Longitud Oeste                                        |
 | `indice_densidad_estado`            | Índice de Densidad del Estado                         |
@@ -48,9 +49,10 @@ Los arhivos están en tres formatos distintos: CSV, JSON, y RDS (formato de dato
 | `macroregion_minsa`                 | Macroregión a la que pertene la región, según el MINSA |
 | `iso_3166_2`                        | Código ISO-3166-2 para la Región                       |
 | `fips`                              | Código FIPS para la Región                             |
+| `capital`                           | Capital de la Provincia                                |
 | `superficie`                        | Superficie en Km<sup>2</sup>                           |
 | `pob_densidad_2020`                 | Densidad Poblacional al 2020                           |
-| `altitud`                           | Altitud en metros sobre el nivel del mar (msnm)        |
+| `altitude`                          | Altitud en metros sobre el nivel del mar (msnm)        |
 | `latitude`                          | Latitud Sur                                            |
 | `longitude`                         | Longitud Oeste                                         |
 | `indice_densidad_estado`            | Índice de Densidad del Estado                          |
@@ -74,9 +76,10 @@ Los arhivos están en tres formatos distintos: CSV, JSON, y RDS (formato de dato
 | `macroregion_minsa`                 | Macroregión a la que pertene la región, según el MINSA |
 | `iso_3166_2`                        | Código ISO-3166-2 para la Región                       |
 | `fips`                              | Código FIPS para la Región                             |
+| `capital`                           | Capital del Distrito                                   |
 | `superficie`                        | Superficie en Km<sup>2</sup>                           |
 | `pob_densidad_2020`                 | Densidad Poblacional al 2020                           |
-| `altitud`                           | Altitud en metros sobre el nivel del mar (msnm)        |
+| `altitude`                          | Altitud en metros sobre el nivel del mar (msnm)        |
 | `latitude`                          | Latitud Sur                                            |
 | `longitude`                         | Longitud Oeste                                         |
 | `indice_vulnerabilidad_alimentaria` | Índice de Vulnerabilidad a la Inseguridad Alimentaria  |
@@ -86,17 +89,22 @@ Los arhivos están en tres formatos distintos: CSV, JSON, y RDS (formato de dato
 
 ### Centros Poblados (CCPP, `ubigeo_ccpp.csv`)
 
-| Campo           | Descripción                  |
-| --------------- | -------------                |
-| `inei_ccpp`     | UBIGEO (INEI) del CCPP       |
-| `inei_distrito` | UBIGEO (INEI) del Distrito   |
-| `departamento`  | Departamento                 |
-| `provincia`     | Provincia                    |
-| `distrito`      | Distrito                     |
-| `ccpp`          | Nombre del CCPP              |
-| `tipo`          | Tipo de CCPP: Urbano o Rural |
-| `latitude`      | Latitud Sur                  |
-| `longitude`     | Longitud Oeste               |
+| Campo           | Descripción                     |
+| --------------- | ------------------------------- |
+| `inei_ccpp`     | UBIGEO (INEI) del CCPP          |
+| `inei_distrito` | UBIGEO (INEI) del Distrito      |
+| `departamento`  | Departamento                    |
+| `provincia`     | Provincia                       |
+| `distrito`      | Distrito                        |
+| `ccpp`          | Nombre del CCPP                 |
+| `tipo`          | Tipo de CCPP: `Urban` o `Rural` |
+| `latitude`      | Latitud Sur                     |
+| `longitude`     | Longitud Oeste                  |
+
+> **Nota sobre formatos**: los nombres de campo de la tabla anterior corresponden a
+> `ubigeo_ccpp.csv`. En `ubigeo_ccpp.json` y `ubigeo_ccpp.rds`, dos de ellos difieren:
+> `inei_distrito` se llama `inei_district`, y `tipo` se llama `type`. Los otros tres
+> archivos (departamento, provincia, distrito) usan los mismos nombres en los tres formatos.
 
 
 ## Descripciones de campos selectos:
