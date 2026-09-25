@@ -23,9 +23,10 @@ Los arhivos están en tres formatos distintos: CSV, JSON, y RDS (formato de dato
 | `departamento`                      | Nombre del Departamento                               |
 | `iso_3166_2`                        | Código ISO-3166-2 para la Región                      |
 | `fips`                              | Código FIPS para la Región                            |
+| `capital`                           | Capital del Departamento                              |
 | `superficie`                        | Superficie en Km<sup>2</sup>                          |
 | `pob_densidad_2020`                 | Densidad Poblacional al 2020                          |
-| `altitud`                           | Altitud en metros sobre el nivel del mar (msnm)       |
+| `altitude`                          | Altitud en metros sobre el nivel del mar (msnm)       |
 | `latitude`                          | Latitud Sur                                           |
 | `longitude`                         | Longitud Oeste                                        |
 | `indice_densidad_estado`            | Índice de Densidad del Estado                         |
@@ -48,9 +49,10 @@ Los arhivos están en tres formatos distintos: CSV, JSON, y RDS (formato de dato
 | `macroregion_minsa`                 | Macroregión a la que pertene la región, según el MINSA |
 | `iso_3166_2`                        | Código ISO-3166-2 para la Región                       |
 | `fips`                              | Código FIPS para la Región                             |
+| `capital`                           | Capital de la Provincia                                |
 | `superficie`                        | Superficie en Km<sup>2</sup>                           |
 | `pob_densidad_2020`                 | Densidad Poblacional al 2020                           |
-| `altitud`                           | Altitud en metros sobre el nivel del mar (msnm)        |
+| `altitude`                          | Altitud en metros sobre el nivel del mar (msnm)        |
 | `latitude`                          | Latitud Sur                                            |
 | `longitude`                         | Longitud Oeste                                         |
 | `indice_densidad_estado`            | Índice de Densidad del Estado                          |
@@ -74,9 +76,10 @@ Los arhivos están en tres formatos distintos: CSV, JSON, y RDS (formato de dato
 | `macroregion_minsa`                 | Macroregión a la que pertene la región, según el MINSA |
 | `iso_3166_2`                        | Código ISO-3166-2 para la Región                       |
 | `fips`                              | Código FIPS para la Región                             |
+| `capital`                           | Capital del Distrito                                   |
 | `superficie`                        | Superficie en Km<sup>2</sup>                           |
 | `pob_densidad_2020`                 | Densidad Poblacional al 2020                           |
-| `altitud`                           | Altitud en metros sobre el nivel del mar (msnm)        |
+| `altitude`                          | Altitud en metros sobre el nivel del mar (msnm)        |
 | `latitude`                          | Latitud Sur                                            |
 | `longitude`                         | Longitud Oeste                                         |
 | `indice_vulnerabilidad_alimentaria` | Índice de Vulnerabilidad a la Inseguridad Alimentaria  |
@@ -86,17 +89,17 @@ Los arhivos están en tres formatos distintos: CSV, JSON, y RDS (formato de dato
 
 ### Centros Poblados (CCPP, `ubigeo_ccpp.csv`)
 
-| Campo           | Descripción                  |
-| --------------- | -------------                |
-| `inei_ccpp`     | UBIGEO (INEI) del CCPP       |
-| `inei_distrito` | UBIGEO (INEI) del Distrito   |
-| `departamento`  | Departamento                 |
-| `provincia`     | Provincia                    |
-| `distrito`      | Distrito                     |
-| `ccpp`          | Nombre del CCPP              |
-| `tipo`          | Tipo de CCPP: Urbano o Rural |
-| `latitude`      | Latitud Sur                  |
-| `longitude`     | Longitud Oeste               |
+| Campo           | Descripción                     |
+| --------------- | ------------------------------- |
+| `inei_ccpp`     | UBIGEO (INEI) del CCPP          |
+| `inei_distrito` | UBIGEO (INEI) del Distrito      |
+| `departamento`  | Departamento                    |
+| `provincia`     | Provincia                       |
+| `distrito`      | Distrito                        |
+| `ccpp`          | Nombre del CCPP                 |
+| `tipo`          | Tipo de CCPP: `Urban` o `Rural` |
+| `latitude`      | Latitud Sur                     |
+| `longitude`     | Longitud Oeste                  |
 
 
 ## Descripciones de campos selectos:
@@ -111,6 +114,32 @@ Los arhivos están en tres formatos distintos: CSV, JSON, y RDS (formato de dato
 
 - **Porcentaje de Pobreza Extrema**: Las cifras de pobreza extrema a nivel nacional y regional son del año 2020 y provienen de INEI (2021) "Informe técnico: Evolución de la pobreza monetaria 2009 - 2020". Las cifras de pobreza extrema en los niveles provincial y distrital son del año 2013 y provienen de INEI (2015) "Mapa de Pobreza Provincial y Distrital 2013". (Fuente: CEPLAN, INEI)
 
+## Validación de los datos
+
+`validar-datos.R` comprueba los datos y falla si encuentra una regresión:
+
+```sh
+Rscript validar-datos.R   # solo necesita R base y jsonlite
+```
+
+Revisa que el README documente los campos que realmente existen, que los códigos UBIGEO
+tengan el formato correcto y no se repitan, que cada nivel cuelgue del nivel superior
+(provincia → departamento, distrito → provincia, CCPP → distrito), que las coordenadas
+caigan dentro del Perú, y que el CSV, el JSON y el RDS de cada nivel tengan las mismas
+filas, campos y valores. Corre en CI ante cualquier cambio a los datos o al README.
+
+Aparte de los errores, informa avisos sobre problemas conocidos que no hacen fallar la
+validación:
+
+- El distrito de SAN ANTONIO (Moquegua) no tiene código INEI, y SANTA MARIA DE HUACHIPA
+  (Lima) no tiene código RENIEC.
+- 19 distritos, creados o renombrados recientemente, no tienen aún los datos aumentados.
+- Dos valores de `capital` en `ubigeo_distrito` traen un salto de línea incrustado
+  (`San Juan de\n Lopecancha`, `Santa Rosa de\n Huayabamba`).
+- 850 filas de `ubigeo_ccpp` escriben el nombre de su departamento, provincia o distrito
+  distinto que `ubigeo_distrito` (`NAZCA`/`NASCA`, `RAYMONDI`/`RAIMONDI`, …). Son variantes
+  ortográficas entre fuentes de INEI; los códigos UBIGEO sí son consistentes.
+
 ## Fuentes originales de datos:
 
 - CEPLAN (https://www.ceplan.gob.pe/informacion-sobre-zonas-y-departamentos-del-peru/)
@@ -121,6 +150,10 @@ Los arhivos están en tres formatos distintos: CSV, JSON, y RDS (formato de dato
 
 ## Nota:
 
+- El 2026-09-25 se regeneraron los `.json` a partir de los `.rds`. Hasta entonces estaban
+  redondeados a 4 decimales (hasta 7.7% de error relativo en `pct_pobreza_extrema`), y
+  `ubigeo_ccpp.json` aún nombraba dos campos `inei_district` y `type`. Ahora los tres
+  formatos coinciden campo por campo y valor por valor.
 - Desde el 2021-08-24, se han separado los UBIGEOs a tres niveles: Departamento, Provincia y Distrito. Adicionalmente se han agregado los UBIGEOS (de INEI) para Centros Poblados (CCPP). En cada nivel se han agregado otros indicadores y porcentajes como información adicional.
 - Desde el 2021-08-14, estos datos también están disponibles para explorar y usar en https://ubigeos-peru.glitch.me/, usando la plataforma de publicación de datos datasette.io y corriendo en glitch.com (sean buenos y no lo carguen demasiado, pues es una cuenta gratuita :-)
   - Un pequeño cambio, para poder usar mapas en la visualización, ha sido el renombrar "latidud" a "latitude", y "longitud" a "longitude" en ese aplicativo.

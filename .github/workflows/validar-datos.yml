@@ -1,0 +1,38 @@
+name: Validar datos
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '*.csv'
+      - '*.json'
+      - '*.rds'
+      - 'README.md'
+      - 'validar-datos.R'
+      - '.github/workflows/validar-datos.yml'
+  pull_request:
+    paths:
+      - '*.csv'
+      - '*.json'
+      - '*.rds'
+      - 'README.md'
+      - 'validar-datos.R'
+      - '.github/workflows/validar-datos.yml'
+  workflow_dispatch:
+
+jobs:
+  validar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          use-public-rspm: true
+
+      - name: Instalar jsonlite
+        run: install.packages("jsonlite")
+        shell: Rscript {0}
+
+      - name: Validar
+        run: Rscript validar-datos.R
