@@ -36,11 +36,6 @@ vacio <- function(x) is.na(x) | x == "" | x == "NA"
 # guarda como CRLF y read.csv normaliza a LF. Es la misma cadena.
 sin_crlf <- function(x) gsub("\r\n", "\n", x, fixed = TRUE)
 
-# Nombres que `ubigeo_ccpp.json` trae en inglés. El .json publicado se generó
-# antes de que estos campos se renombraran en el .rds, así que quedó desfasado;
-# se aceptan para poder comparar el resto de los valores, con aviso.
-LEGADO_JSON <- c(inei_distrito = "inei_district", tipo = "type")
-
 NIVELES <- c("ubigeo_departamento", "ubigeo_provincia", "ubigeo_distrito", "ubigeo_ccpp")
 csv <- lapply(NIVELES, leer_csv)
 names(csv) <- NIVELES
@@ -49,18 +44,6 @@ dep <- csv$ubigeo_departamento
 prov <- csv$ubigeo_provincia
 dist <- csv$ubigeo_distrito
 ccpp <- csv$ubigeo_ccpp
-
-# Empareja cada columna del CSV con su equivalente en el otro formato,
-# aceptando los nombres heredados. NA si la columna no está.
-emparejar <- function(esperados, reales) {
-  mapa <- ifelse(esperados %in% reales, esperados, NA_character_)
-  falta <- is.na(mapa)
-  if (any(falta)) {
-    alias <- unname(LEGADO_JSON[esperados[falta]])
-    mapa[falta] <- ifelse(!is.na(alias) & alias %in% reales, alias, NA_character_)
-  }
-  mapa
-}
 
 # ---------------------------------------------------------------------------
 seccion("1. El README documenta los campos que existen")
@@ -204,8 +187,6 @@ seccion("5. Consistencia entre CSV, JSON y RDS")
 # Los tres formatos se publican como equivalentes: deben tener las mismas filas,
 # los mismos campos y los mismos valores.
 
-desfasados <- character()
-
 for (base in NIVELES) {
   d <- csv[[base]]
 
@@ -222,19 +203,12 @@ for (base in NIVELES) {
       as.data.frame(readRDS(ruta))
     }
 
-    mapa <- emparejar(names(d), names(otro))
-    heredados <- !is.na(mapa) & mapa != names(d)
-    completo <- !any(is.na(mapa)) && identical(mapa[!is.na(mapa)], names(otro))
-
-    paso(completo, sprintf("%-22s %-4s mismos campos que el CSV", base, fmt))
-    if (!completo) {
+    mismos <- identical(names(otro), names(d))
+    paso(mismos, sprintf("%-22s %-4s mismos campos que el CSV", base, fmt))
+    if (!mismos) {
       err(sprintf("%s.%s: campos distintos al CSV.\n      %-5s: %s\n      CSV  : %s",
                   base, fmt, fmt, paste(names(otro), collapse = ", "),
                   paste(names(d), collapse = ", ")))
-    } else if (any(heredados)) {
-      desfasados <- union(desfasados, ruta)
-      paso(TRUE, sprintf("%-22s %-4s usa nombres heredados: %s", base, fmt,
-                         paste(sprintf("%s -> %s", names(d)[heredados], mapa[heredados]), collapse = ", ")))
     }
 
     bien <- nrow(otro) == nrow(d)
@@ -244,23 +218,31 @@ for (base in NIVELES) {
       next
     }
 
-    # Valores: exacto para texto; para los numéricos con tolerancia, porque el
-    # .json actual está escrito con menos decimales (ver los avisos).
+    # Valores: exacto para texto; para los numéricos, con una tolerancia que
+    # solo absorbe el ruido de escribir y releer un double (~5e-15). Un .json
+    # generado sin digits = NA se desvía ~1e-4 y falla aquí.
     for (k in seq_along(names(d))) {
-      if (is.na(mapa[k])) next
       col_csv <- d[[k]]
-      col_otro <- otro[[mapa[k]]]
+      col_otro <- otro[[names(d)[k]]]
+      if (is.null(col_otro)) next
 
       if (is.numeric(col_otro)) {
         a <- suppressWarnings(as.numeric(ifelse(vacio(col_csv), NA, col_csv)))
         b <- as.numeric(col_otro)
         discrepa <- xor(is.na(a), is.na(b))
         ambos <- !is.na(a) & !is.na(b)
-        discrepa[ambos] <- abs(a[ambos] - b[ambos]) > 1e-3 * pmax(abs(a[ambos]), 1)
+        discrepa[ambos] <- abs(a[ambos] - b[ambos]) > 1e-9 * pmax(abs(a[ambos]), 1)
         if (any(discrepa)) {
           ej <- head(which(discrepa), 1)
-          err(sprintf("%s.%s: '%s' difiere del CSV en %d fila(s). Ej: fila %d, CSV=%s %s=%s",
-                      base, fmt, names(d)[k], sum(discrepa), ej, col_csv[ej], fmt, format(b[ej])))
+          # Una diferencia pequeña y generalizada suele ser redondeo al generar,
+          # no datos distintos: vale la pena decir dónde mirar.
+          rel <- max(abs(a[discrepa] - b[discrepa]) / pmax(abs(a[discrepa]), 1e-12), na.rm = TRUE)
+          pista <- if (rel < 1e-2 && fmt == "json") {
+            "\n      Parece redondeo: comprueba que generar-json.R pase digits = NA."
+          } else ""
+          err(sprintf("%s.%s: '%s' difiere del CSV en %d fila(s). Ej: fila %d, CSV=%s %s=%s%s",
+                      base, fmt, names(d)[k], sum(discrepa), ej, col_csv[ej], fmt,
+                      format(b[ej], digits = 15), pista))
         }
       } else {
         b <- ifelse(is.na(col_otro), "NA", as.character(col_otro))
@@ -277,47 +259,10 @@ for (base in NIVELES) {
 }
 
 # ---------------------------------------------------------------------------
-seccion("6. Avisos: datos por regenerar y rarezas de las fuentes")
+seccion("6. Avisos: rarezas conocidas de las fuentes")
 # ---------------------------------------------------------------------------
 
-# 6.1 Precisión perdida al exportar a JSON: jsonlite::toJSON() redondea a 4
-#     decimales salvo que se le pase digits = NA.
-peor <- 0
-afectados <- character()
-for (base in NIVELES) {
-  d <- csv[[base]]
-  j <- jsonlite::fromJSON(paste0(base, ".json"), simplifyDataFrame = TRUE)
-  mapa <- emparejar(names(d), names(j))
-  for (k in seq_along(names(d))) {
-    if (is.na(mapa[k])) next
-    col <- j[[mapa[k]]]
-    if (!is.numeric(col)) next
-    a <- suppressWarnings(as.numeric(ifelse(vacio(d[[k]]), NA, d[[k]])))
-    ambos <- !is.na(a) & !is.na(col)
-    if (!any(ambos)) next
-    rel <- abs(a[ambos] - col[ambos]) / pmax(abs(a[ambos]), 1e-12)
-    if (max(rel) > 1e-9) {
-      afectados <- union(afectados, base)
-      peor <- max(peor, max(rel))
-    }
-  }
-}
-if (length(afectados)) {
-  avi(sprintf(paste0("Los .json tienen menos precisión que los .csv (error relativo de hasta %.2g).\n",
-                     "      Afecta a: %s\n",
-                     "      Causa: jsonlite::toJSON() redondea a 4 decimales por defecto. generar-json.R\n",
-                     "      ya pasa digits = NA, pero los .json publicados son anteriores a ese cambio."),
-              peor, paste(afectados, collapse = ", ")))
-}
-
-# 6.2 Archivos generados antes de un renombrado de campos.
-if (length(desfasados)) {
-  avi(sprintf(paste0("%s usa(n) nombres de campo que el .rds ya no tiene.\n",
-                     "      Se generaron antes del renombrado; regenerar con: Rscript generar-json.R"),
-              paste(desfasados, collapse = ", ")))
-}
-
-# 6.3 Filas sin código en alguna de las dos codificaciones.
+# 6.1 Filas sin código en alguna de las dos codificaciones.
 for (base in c("ubigeo_departamento", "ubigeo_provincia", "ubigeo_distrito")) {
   d <- csv[[base]]
   for (columna in c("inei", "reniec")) {
@@ -330,14 +275,14 @@ for (base in c("ubigeo_departamento", "ubigeo_provincia", "ubigeo_distrito")) {
   }
 }
 
-# 6.4 Distritos sin los datos suplementarios.
+# 6.2 Distritos sin los datos suplementarios.
 sin_datos <- which(vacio(dist$superficie))
 if (length(sin_datos)) {
   avi(sprintf("ubigeo_distrito: %d distrito(s) sin datos aumentados (superficie, altitud, coordenadas, índices).",
               length(sin_datos)))
 }
 
-# 6.5 Saltos de línea incrustados en campos de texto.
+# 6.3 Saltos de línea incrustados en campos de texto.
 for (base in NIVELES) {
   d <- csv[[base]]
   for (columna in names(d)) {
@@ -350,7 +295,7 @@ for (base in NIVELES) {
   }
 }
 
-# 6.6 Nombres de CCPP que no coinciden con los de su distrito.
+# 6.4 Nombres de CCPP que no coinciden con los de su distrito.
 idx <- match(ccpp$inei_distrito, dist$inei)
 comparables <- !is.na(idx)
 difieren <- comparables &

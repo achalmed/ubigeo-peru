@@ -101,10 +101,6 @@ Los arhivos están en tres formatos distintos: CSV, JSON, y RDS (formato de dato
 | `latitude`      | Latitud Sur                     |
 | `longitude`     | Longitud Oeste                  |
 
-> **Nota sobre formatos**: `ubigeo_ccpp.csv` y `ubigeo_ccpp.rds` usan los nombres de la
-> tabla anterior, pero `ubigeo_ccpp.json` todavía trae `inei_district` y `type`: ese archivo
-> se generó antes de que los campos se renombraran, y aún no se ha vuelto a generar.
-
 
 ## Descripciones de campos selectos:
 
@@ -135,13 +131,11 @@ filas, campos y valores. Corre en CI ante cualquier cambio a los datos o al READ
 Aparte de los errores, informa avisos sobre problemas conocidos que no hacen fallar la
 validación:
 
-- Los `.json` publicados están redondeados a 4 decimales (el valor por defecto de
-  `jsonlite::toJSON()`), con un error relativo de hasta 7.7% en los porcentajes de pobreza
-  extrema. `generar-json.R` ya pasa `digits = NA`; hace falta volver a generar los `.json`.
-- `ubigeo_ccpp.json` conserva los nombres de campo anteriores (ver la nota de arriba).
 - El distrito de SAN ANTONIO (Moquegua) no tiene código INEI, y SANTA MARIA DE HUACHIPA
   (Lima) no tiene código RENIEC.
 - 19 distritos, creados o renombrados recientemente, no tienen aún los datos aumentados.
+- Dos valores de `capital` en `ubigeo_distrito` traen un salto de línea incrustado
+  (`San Juan de\n Lopecancha`, `Santa Rosa de\n Huayabamba`).
 - 850 filas de `ubigeo_ccpp` escriben el nombre de su departamento, provincia o distrito
   distinto que `ubigeo_distrito` (`NAZCA`/`NASCA`, `RAYMONDI`/`RAIMONDI`, …). Son variantes
   ortográficas entre fuentes de INEI; los códigos UBIGEO sí son consistentes.
@@ -156,6 +150,10 @@ validación:
 
 ## Nota:
 
+- El 2026-09-25 se regeneraron los `.json` a partir de los `.rds`. Hasta entonces estaban
+  redondeados a 4 decimales (hasta 7.7% de error relativo en `pct_pobreza_extrema`), y
+  `ubigeo_ccpp.json` aún nombraba dos campos `inei_district` y `type`. Ahora los tres
+  formatos coinciden campo por campo y valor por valor.
 - Desde el 2021-08-24, se han separado los UBIGEOs a tres niveles: Departamento, Provincia y Distrito. Adicionalmente se han agregado los UBIGEOS (de INEI) para Centros Poblados (CCPP). En cada nivel se han agregado otros indicadores y porcentajes como información adicional.
 - Desde el 2021-08-14, estos datos también están disponibles para explorar y usar en https://ubigeos-peru.glitch.me/, usando la plataforma de publicación de datos datasette.io y corriendo en glitch.com (sean buenos y no lo carguen demasiado, pues es una cuenta gratuita :-)
   - Un pequeño cambio, para poder usar mapas en la visualización, ha sido el renombrar "latidud" a "latitude", y "longitud" a "longitude" en ese aplicativo.
